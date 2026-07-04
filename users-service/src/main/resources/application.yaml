@@ -1,0 +1,62 @@
+spring:
+  application:
+    name: users-service
+
+  config:
+    import: optional:file:.env[.properties]
+
+  datasource:
+    url: jdbc:postgresql://localhost:5460,localhost:5461/${PG_USERS_DB}?targetServerType=preferPrimary&loadBalanceHosts=false
+    hikari:
+      initialization-fail-timeout: -1
+      connection-test-query: SELECT 1
+      keepalive-time: 15000
+      connection-timeout: 30000
+      validation-timeout: 5000
+      max-lifetime: 60000
+      minimum-idle: 0
+    username: ${PG_USERS_USER}
+    password: ${PG_USERS_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  kafka:
+    listener:
+      ack-mode: record
+    bootstrap-servers: localhost:9092
+    producer:
+      client-id: users-service-producer
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: users-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.synapse.usersservice.messaging.dtos"
+        spring.json.value.default.type: "com.synapse.usersservice.messaging.dtos.UserPendingEvent"
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+  metrics:
+    tags:
+      application: catalogo-service-java
+
+server:
+  port: 8081

@@ -1,0 +1,68 @@
+services:
+
+  postgres-primary:
+    image: bitnami/postgresql:latest
+    container_name: postgres_users_primary
+    ports:
+      - "5460:5432"
+    environment:
+      POSTGRESQL_REPLICATION_MODE: master
+      POSTGRESQL_REPLICATION_USER: ${PG_USERS_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${PG_USERS_REPLICATION_PASSWORD}
+      POSTGRESQL_USERNAME: ${PG_USERS_USER}
+      POSTGRESQL_PASSWORD: ${PG_USERS_PASSWORD}
+      POSTGRESQL_DATABASE: ${PG_USERS_DB}
+    volumes:
+      - postgres_primary_data:/bitnami/postgresql
+
+  postgres-replica:
+    image: bitnami/postgresql:latest
+    container_name: postgres_users_replica
+    ports:
+      - "5461:5432"
+    environment:
+      POSTGRESQL_REPLICATION_MODE: slave
+      POSTGRESQL_REPLICATION_USER: ${PG_USERS_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${PG_USERS_REPLICATION_PASSWORD}
+      POSTGRESQL_MASTER_HOST: postgres-primary
+      POSTGRESQL_MASTER_PORT_NUMBER: 5432
+      POSTGRESQL_USERNAME: ${PG_USERS_USER}
+      POSTGRESQL_PASSWORD: ${PG_USERS_PASSWORD}
+      POSTGRESQL_DATABASE: ${PG_USERS_DB}
+    depends_on:
+      - postgres-primary
+    volumes:
+      - postgres_replica_data:/bitnami/postgresql
+
+  kafka:
+    image: apache/kafka:4.1.2
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    depends_on:
+      - kafka
+
+volumes:
+  postgres_primary_data:
+  postgres_replica_data:
+  kafka_data:
